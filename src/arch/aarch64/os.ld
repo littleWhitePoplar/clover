@@ -1,7 +1,13 @@
+OUTPUT_ARCH("aarch64")
+
 ENTRY(_start)
 
 SECTIONS {
-    . = 0x80000000; /* 设置虚拟地址的起始位置，可以根据实际情况调整 */
+    /*
+        qemu hw/arm/boot.c
+        #define KERNEL64_LOAD_ADDR 0x00080000
+    */
+    . = 0x80000;
 
     /* The .text section contains program code */
     .text : {
