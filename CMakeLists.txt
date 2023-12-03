@@ -19,11 +19,12 @@ enable_language(ASM)
 # add kernel
 add_executable(kernel
     src/arch/${ARCH}/start.S
-    src/base/uart.cpp
+    src/arch/${ARCH}/uart.cpp
     src/base/kernel.cpp
+    src/util/util.cpp
 )
 
-target_include_directories(kernel PRIVATE ${CMAKE_SOURCE_DIR}/src/arch/${ARCH} ${CMAKE_SOURCE_DIR}/src/base)
+target_include_directories(kernel PRIVATE ${CMAKE_SOURCE_DIR}/src/arch/${ARCH} ${CMAKE_SOURCE_DIR}/src/base ${CMAKE_SOURCE_DIR}/src/util)
 
 # link os.ld
 set_target_properties(kernel PROPERTIES LINK_FLAGS "-T ${CMAKE_SOURCE_DIR}/src/arch/${ARCH}/os.ld")

@@ -13,15 +13,10 @@ sleep:
     b sleep
 
 master:
-    // Set the STACK space to stacks to stacks+STACK SIZE
-    adrp x0, stacks
-    add x0, x0, :lo12:stacks
+    // Set the STACK space to stacks to (1GiB+STACK_SIZE)
+    add x0, x0, 1
+    LSL x0, x0, #30
     add x0, x0, STACK_SIZE
     mov sp, x0
-
     bl startKernel
     b sleep
-
-stacks:
-    .skip STACK_SIZE
-    .end
