@@ -1,5 +1,4 @@
 
-.equ STACK_SIZE, 4096
 .global _start
 
 .section .text
@@ -13,10 +12,8 @@ sleep:
     b sleep
 
 master:
-    // Set the STACK space to stacks to (1GiB+STACK_SIZE)
-    add x0, x0, 1
-    LSL x0, x0, #30
-    add x0, x0, STACK_SIZE
+    // Set the STACK space to stacks to (1GiB+128M)
+    mov x0, #0x48000000
     mov sp, x0
     bl startKernel
     b sleep

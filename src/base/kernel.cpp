@@ -1,9 +1,10 @@
+#include "format.h"
 #include "uart.h"
 using namespace kernel;
 extern "C" void startKernel() {
-  Uart uart;
-  uart.init();
-  uart.puts("123\n");
+  initUart();
+  puts("123\n");
+  puts(getFormat().format("I'm {},I'm {} years old\n", "Bob", 23));
   while (1) {
   }
 }

@@ -39,4 +39,7 @@ class Uart {
   void putChar(char ch);
   void puts(const char *s);
 };
+void initUart();
+void putChar(char ch);
+void puts(const char *s);
 }  // namespace kernel

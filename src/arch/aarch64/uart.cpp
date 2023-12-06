@@ -21,4 +21,9 @@ void Uart::puts(const char *s) {
     putChar(*s++);
   }
 }
+static Uart uart;
+
+void initUart() { uart.init(); }
+void putChar(char ch) { uart.putChar(ch); }
+void puts(const char *s) { uart.puts(s); }
 }  // namespace kernel

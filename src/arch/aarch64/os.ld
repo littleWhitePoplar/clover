@@ -7,7 +7,7 @@ SECTIONS {
         qemu hw/arm/boot.c
         #define KERNEL64_LOAD_ADDR 0x00080000
     */
-    . = 0x80000;
+    . = 0x40000000;
 
     /* The .text section contains program code */
     .text : {
