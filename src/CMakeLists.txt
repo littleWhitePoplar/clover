@@ -17,6 +17,8 @@ add_executable(kernel
     util/util.cpp
     util/string_util.cpp
     util/format.cpp
+    base/memory.cpp
+    base/allocator.cpp
 )
 
 target_include_directories(kernel PRIVATE ${CMAKE_SOURCE_DIR}/src/arch/${ARCH} ${CMAKE_SOURCE_DIR}/src/base ${CMAKE_SOURCE_DIR}/src/util)
