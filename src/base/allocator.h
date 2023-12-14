@@ -1,4 +1,4 @@
-
+#pragma once
 #include "memory.h"
 #include "types.h"
 namespace kernel {
@@ -6,7 +6,6 @@ class BitMap {
  private:
   Uint64 *m_bitmap = nullptr;
   Uint64 m_bytes = 0;
-  Uint64 m_pages = 0;
 
  public:
   void set(Uint64 i) { m_bitmap[i >> 6] |= (1ULL << (i & 0x3F)); }
@@ -14,45 +13,79 @@ class BitMap {
   bool isSet(Uint64 i) {
     return (m_bitmap[i / 64] & (1ULL << (i & 0x3F))) != 0;
   };
-  void resize(Uint64 bytes) {
+  bool resize(Uint64 bytes) {
     if (bytes <= m_bytes) {
-      return;
+      return true;
     }
-    auto pages = (bytes >> PAGE_BITS) + (bytes & PAGE_MASK) ? 1 : 0;
+    auto pages = (bytes >> PAGE_BITS) + ((bytes & PAGE_MASK) ? 1 : 0);
     auto bitmap = (Uint64 *)mallocPages(pages);
+    if (bitmap == nullptr) {
+      return false;
+    }
     if (m_bitmap != nullptr) {
       for (Int32 i = 0; i < m_bytes >> 3; i++) {
         bitmap[i] = m_bitmap[i];
       }
-      freePages(m_bitmap, m_pages);
+      freePages(m_bitmap);
     }
     m_bytes = bytes;
-    m_pages = pages;
     m_bitmap = bitmap;
+    return true;
   }
 };
 
 class Allocator {
  private:
-  class PtrAndSizePairs {
-    struct PtrAndSizePair {
+  class MallocRecord {
+    struct MallocRecordEntry {
       void *ptr = nullptr;
-      Uint64 size = 0;
+      Uint64 bytes = 0;
     };
-    constexpr static Int32 S_SIZE = PAGE_SIZE / sizeof(PtrAndSizePair);
-    Uint64 m_current = 0;
-    PtrAndSizePair m_ptrs[S_SIZE];
+    MallocRecordEntry *m_entries;
+    Uint64 m_size = 0;
+    Uint64 getPages(Uint64 size) {
+      return (size * sizeof(MallocRecordEntry)) >> PAGE_BITS;
+    }
+    bool resize(Uint64 size) {
+      if (size <= m_size) {
+        return true;
+      }
+      auto ptr = (MallocRecordEntry *)mallocPages(getPages(size));
+      if (ptr == nullptr) {
+        return false;
+      }
+      for (Uint64 i = 0; i < m_size; i++) {
+        ptr[i] = m_entries[i];
+      }
+      freePages(m_entries);
+      m_entries = ptr;
+      m_size = size;
+      return true;
+    }
 
    public:
-    void add(void *ptr, Uint64 size) {
-      m_ptrs[m_current].ptr = ptr;
-      m_ptrs[m_current].size = size;
-      m_current = (m_current + 1) % S_SIZE;
+    bool add(void *ptr, Uint64 bytes) {
+      for (Uint64 i = 0; i < m_size; i++) {
+        if (m_entries[i].ptr == nullptr) {
+          m_entries[i].ptr = ptr;
+          m_entries[i].bytes = bytes;
+          return true;
+        }
+      }
+      auto beforeSize = m_size;
+      if (!resize(m_size == 0 ? PAGE_SIZE / sizeof(MallocRecordEntry)
+                              : m_size << 1)) {
+        return false;
+      }
+      m_entries[beforeSize].ptr = ptr;
+      m_entries[beforeSize].bytes = bytes;
+      return true;
     }
-    Uint64 getSize(void *ptr) {
-      for (Uint64 i = 0; i < S_SIZE; i++) {
-        if (m_ptrs[i].ptr == ptr) {
-          return m_ptrs[i].size;
+    Uint64 getBytesAndErase(void *ptr) {
+      for (Uint64 i = 0; i < m_size; i++) {
+        if (m_entries[i].ptr == ptr) {
+          m_entries[i].ptr = nullptr;
+          return m_entries[i].bytes;
         }
       }
       return 0;
@@ -61,8 +94,8 @@ class Allocator {
   Uint8 *m_ptr = nullptr;
   Int32 m_pages = 0;
   BitMap m_bitmap;
-  PtrAndSizePairs m_ptrAndSizePairs;
-  void resize(Int32 pages);
+  MallocRecord m_mallocRecord;
+  bool resize(Int32 pages);
 
  public:
   void *malloc(Int32 bytes);

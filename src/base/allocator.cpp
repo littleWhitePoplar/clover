@@ -1,54 +1,69 @@
 #include "allocator.h"
 
 #include "format.h"
+#include "memory.h"
 #include "types.h"
-#include "uart.h"
 
 namespace kernel {
 
-void Allocator::resize(Int32 pages) {
+bool Allocator::resize(Int32 pages) {
   if (pages > m_pages) {
+    if (!m_bitmap.resize((pages << PAGE_BITS) >> 3)) {
+      return false;
+    }
     auto ptr = (Uint8 *)mallocPages(pages);
+    if (ptr == nullptr) {
+      return false;
+    }
     if (m_ptr != nullptr) {
       for (auto i = 0ul; i < m_pages << PAGE_BITS; i++) {
         ptr[i] = m_ptr[i];
       }
-      freePages(m_ptr, m_pages);
+      freePages(m_ptr);
     }
     m_ptr = ptr;
     m_pages = pages;
-    m_bitmap.resize((pages << PAGE_BITS) >> 3);
+  } else {
   }
+  return true;
 }
 
 void *Allocator::malloc(Int32 bytes) {
-  // find a continuous space of size in bitmap
-  for (auto i = 0; i < m_pages << PAGE_BITS; i++) {
-    auto flag = true;
-    for (auto j = i; j < (i + bytes) && j < (m_pages << PAGE_BITS); j++) {
-      if (m_bitmap.isSet(j)) {
-        flag = false;
+  if (bytes <= 0) {
+    return nullptr;
+  }
+  if (m_pages &&
+      ((bytes >> PAGE_BITS) + (bytes & PAGE_MASK) ? 1 : 0) <= m_pages) {
+    for (auto i = 0; i < (m_pages << PAGE_BITS); i++) {
+      if (i + bytes > (m_pages << PAGE_BITS)) {
         break;
       }
-    }
-    if (flag) {
-      for (auto j = i; j < i + bytes; j++) {
-        m_bitmap.set(j);
+      auto flag = true;
+      for (auto j = i; j < (i + bytes); j++) {
+        if (m_bitmap.isSet(j)) {
+          flag = false;
+          break;
+        }
       }
-      m_ptrAndSizePairs.add(m_ptr + i, bytes);
-      return reinterpret_cast<void *>(m_ptr + i);
+      if (flag) {
+        if (!m_mallocRecord.add(m_ptr + i, bytes)) {
+          return nullptr;
+        }
+        for (auto j = i; j < i + bytes; j++) {
+          m_bitmap.set(j);
+        }
+        return reinterpret_cast<void *>(m_ptr + i);
+      }
     }
   }
-  if (m_pages == 0) {
-    // m_pages = 1;
-    resize(1);
-  } else {
-    resize(m_pages << 1);
+  auto pages = (bytes >> PAGE_BITS) + ((bytes & PAGE_MASK) ? 1 : 0);
+  if (resize(pages > m_pages ? pages : m_pages << 1)) {
+    return malloc(bytes);
   }
-  return malloc(bytes);
+  return nullptr;
 }
 void Allocator::free(void *ptr) {
-  auto bytes = m_ptrAndSizePairs.getSize(ptr);
+  auto bytes = m_mallocRecord.getBytesAndErase(ptr);
   for (auto i = (Uint8 *)ptr - m_ptr, j = 0l; j < bytes; j++) {
     m_bitmap.clear(i + j);
   }
