@@ -15,5 +15,5 @@ master:
     // Set the STACK space to stacks to (1GiB+128M)
     mov x0, #0x40400000
     mov sp, x0
-    bl startKernel
+    bl start_kernel
     b sleep

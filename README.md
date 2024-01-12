@@ -1,22 +1,24 @@
 # clover
 
-* 0.How to get?
+The current branch is mainly for learning aarch64
+
+* How to get?
 
 ```bash
-git clone https://github.com/littleWhitePoplar/clover.git
+git clone -b aarch64 https://github.com/littleWhitePoplar/clover.git
 ```
 
-* 1.How to build？
+* How to build？
 
 ```bash
 cd clover
 mkdir -p build && cd build
-cmake -DARCH=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -G Ninja ..
+cmake -DARCH=aarch64 -DBUILD_TESTS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -G Ninja ..
 ninja
 ```
 
-* 2.How to use?
+* How to use?
 
 ```bash
-qemu-system-aarch64 -nographic -smp 1 -machine virt -cpu cortex-a57 -kernel os.elf
+qemu-system-aarch64 -nographic -smp 1 -machine virt -cpu cortex-a57 -kernel build/bin/kernel.elf
 ```
